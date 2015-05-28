@@ -25,6 +25,7 @@ All timeouts are in milliseconds.
 import cStringIO
 import os
 import socket
+import stat
 
 from M2Crypto import RSA
 
@@ -171,19 +172,41 @@ class AdbCommands(object):
     Returns:
       The file data if dest_file is not set.
     """
-    if isinstance(dest_file, basestring):
-      dest_file = open(dest_file, 'w')
-    elif not dest_file:
-      dest_file = cStringIO.StringIO()
-    connection = self.protocol_handler.Open(
-        self.handle, destination='sync:',
-        timeout_ms=timeout_ms)
-    self.filesync_handler.Pull(connection, device_filename, dest_file)
-    connection.Close()
-    # An empty call to cStringIO.StringIO returns an instance of
-    # cStringIO.OutputType.
-    if isinstance(dest_file, cStringIO.OutputType):
-      return dest_file.getvalue()
+
+    if dest_file:
+      print("pull: %s -> %s" % (device_filename, dest_file))
+
+    filemode, _, _= self.Stat(device_filename)
+
+    if stat.S_ISDIR(filemode):
+      assert dest_file, "Must specify out dir when pulling a directory"
+      file_list = self.List(device_filename)
+      if not os.path.exists(dest_file):
+        os.makedirs(dest_file)
+
+      for device_file in file_list:
+        if device_file.filename not in (".", ".."):
+          self.Pull(
+            os.path.join(device_filename, device_file.filename),
+            os.path.join(dest_file, device_file.filename) if dest_file else None
+          )
+
+    else:
+      if stat.S_ISLNK(filemode) or stat.S_ISSOCK(filemode):
+        return
+      if isinstance(dest_file, basestring):
+        dest_file = open(dest_file, 'w')
+      elif not dest_file:
+        dest_file = cStringIO.StringIO()
+      connection = self.protocol_handler.Open(
+          self.handle, destination='sync:',
+          timeout_ms=timeout_ms)
+      self.filesync_handler.Pull(connection, device_filename, dest_file)
+      connection.Close()
+      # An empty call to cStringIO.StringIO returns an instance of
+      # cStringIO.OutputType.
+      if isinstance(dest_file, cStringIO.OutputType):
+        return dest_file.getvalue()
 
   def Stat(self, device_filename):
     """Get a file's stat() information."""

@@ -43,7 +43,7 @@ Android project's ADB.
 
     keywords = ['android', 'adb', 'fastboot'],
 
-    install_requires = ['libusb1', 'M2Crypto'],
+    install_requires = ['libusb1', 'python-gflags', 'M2Crypto'],
 
 ## classifier list https://pypi.python.org/pypi?:action=list_classifiers
     classifiers = [

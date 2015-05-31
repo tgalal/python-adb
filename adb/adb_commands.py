@@ -173,13 +173,11 @@ class AdbCommands(object):
       The file data if dest_file is not set.
     """
 
-    if dest_file:
-      print("pull: %s -> %s" % (device_filename, dest_file))
-
     filemode, _, _= self.Stat(device_filename)
 
     if stat.S_ISDIR(filemode):
-      assert dest_file, "Must specify out dir when pulling a directory"
+      if dest_file is None:
+        raise ValueError("Must specify dest_file when pulling a directory")
       file_list = self.List(device_filename)
       if not os.path.exists(dest_file):
         os.makedirs(dest_file)
